@@ -1,0 +1,49 @@
+body {
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    background-color: #f5f5f5;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+body.dark { background-color: #121212; color: white; }
+
+.header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; }
+
+.add-task-section { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 20px; }
+
+input[type=text], input[type=date], input[type=time] { flex: 1; padding: 8px; font-size: 14px; }
+
+button { padding: 8px 12px; border: none; border-radius: 5px; background-color: #1db954; color: white; cursor: pointer; transition: transform 0.2s; }
+button:hover { transform: scale(1.05); }
+
+.kanban-board { display: flex; justify-content: space-around; padding: 20px; gap: 10px; }
+.column { background-color: #fff; flex: 1; border-radius: 10px; padding: 10px; min-height: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: background-color 0.3s; }
+body.dark .column { background-color: #1e1e1e; }
+.column h2 { text-align: center; }
+.task-column { list-style: none; padding: 0; }
+
+li {
+    background-color: #f0f0f0;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: grab;
+    transition: transform 0.3s, box-shadow 0.3s;
+    display: flex;
+    justify-content: space-between;
+}
+li:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+body.dark li { background-color: #2a2a2a; color: white; }
+li.completed { text-decoration: line-through; color: gray; }
+
+.task-info { flex: 1; display: flex; flex-direction: column; }
+
+.subtasks { margin-top: 5px; padding-left: 15px; list-style-type: circle; }
+
+button.edit, button.delete, button.add-subtask, button.status-btn, button.change-time { margin-left: 5px; padding: 4px 8px; border: none; border-radius: 5px; cursor: pointer; }
+button.edit { background-color: #ff9800; color: white; }
+button.delete { background-color: red; color: white; }
+button.add-subtask { background-color: #2196f3; color: white; }
+button.status-btn { background-color: #666; color: white; }
+button.status-btn:hover { background-color: #444; }
+button.change-time { background-color: #9c27b0; color: white; }
