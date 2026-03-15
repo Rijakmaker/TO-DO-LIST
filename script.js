@@ -1,137 +1,112 @@
-// Elements
-const taskInput = document.getElementById('taskInput');
-const deadlineInput = document.getElementById('deadlineInput');
-const timeInput = document.getElementById('timeInput');
-const categoryInput = document.getElementById('categoryInput');
-const addBtn = document.getElementById('addBtn');
-const modeToggle = document.getElementById('modeToggle');
-const todoList = document.getElementById('todoList');
-const doingList = document.getElementById('doingList');
-const doneList = document.getElementById('doneList');
+let currentEditingCard = null;
 
-let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-tasks.forEach(t => { if(t.notified===undefined) t.notified=false; });
+function addTaskWithLoading() {
+    const btn = document.getElementById('addBtn');
+    const input = document.getElementById('taskName').value;
+    
+    if (!input) return alert("Task title is required!");
 
-// Save & Render
-function saveTasks(){ localStorage.setItem('tasks',JSON.stringify(tasks)); }
+    btn.innerText = "Processing...";
+    btn.disabled = true;
 
-function renderTasks(){
-    todoList.innerHTML=''; doingList.innerHTML=''; doneList.innerHTML='';
+    setTimeout(() => {
+        createNewTask();
+        btn.innerText = "Add Task";
+        btn.disabled = false;
+    }, 400);
+}
 
-    tasks.forEach((task,index)=>{
-        const li=document.createElement('li');
-        li.draggable=true;
-        li.dataset.index=index;
-        li.className=task.completed?'completed':'';
+function createNewTask() {
+    const name = document.getElementById('taskName').value;
+    const date = document.getElementById('taskDate').value;
+    const time = document.getElementById('taskTime').value;
+    const cat = document.getElementById('taskCategory').value;
 
-        let subtaskHtml='';
-        if(task.subtasks){ subtaskHtml=`<ul class="subtasks">${task.subtasks.map((sub,i)=>`<li>${sub}<button onclick="deleteSubtask(${index},${i})">x</button></li>`).join('')}</ul>`; }
+    const card = document.createElement('div');
+    card.className = 'task-card';
+    card.innerHTML = `
+        <span style="font-size:0.65rem; font-weight:700; color:var(--primary);">${cat.toUpperCase()}</span>
+        <h4 class="task-title">${name}</h4>
+        <div class="task-meta">
+            <div class="date-val">📅 ${date || 'No Date'}</div>
+            <div class="time-val">⏰ ${time || '--:--'}</div>
+        </div>
+        <div class="actions">
+            <button class="btn-action" onclick="moveNext(this)">Next →</button>
+            <button class="btn-action" onclick="openEditModal(this)">Edit</button>
+            <button class="btn-action" onclick="deleteTask(this)" style="color:var(--danger);">Delete</button>
+        </div>
+    `;
 
-        li.innerHTML=`
-            <div class="task-info">
-                <span onclick="toggleComplete(${index})">${task.text}</span>
-                ${task.deadline?`<span> Due: ${task.deadline}</span>`:''}
-                ${task.time?`<span> At: ${task.time}</span>`:''}
-                ${task.category?`<span> Category: ${task.category}</span>`:''}
-                ${subtaskHtml}
-            </div>
-            <div>
-                <button class="edit" onclick="editTask(${index})">Edit</button>
-                <button class="delete" onclick="deleteTask(${index})">Delete</button>
-                <button class="add-subtask" onclick="addSubtask(${index})">+Subtask</button>
-                <button class="status-btn" onclick="changeStatus(${index},'todo')">➖</button>
-                <button class="status-btn" onclick="changeStatus(${index},'doing')">➡️</button>
-                <button class="status-btn" onclick="changeStatus(${index},'done')">✅</button>
-                <button class="status-btn" onclick="changeStatus(${index},'cancel')">❌</button>
-                <button class="change-time" onclick="changeTime(${index})">⏰ Change</button>
-            </div>
-        `;
+    document.querySelector('#todo .task-area').appendChild(card);
+    document.getElementById('taskName').value = ""; // Reset Title
+    updateCounts();
+}
 
-        // Drag events
-        li.addEventListener('dragstart',dragStart);
-        li.addEventListener('dragover',dragOver);
-        li.addEventListener('drop',drop);
+// FULL EDIT LOGIC
+function openEditModal(btn) {
+    currentEditingCard = btn.closest('.task-card');
+    
+    // Get existing values from the card
+    const title = currentEditingCard.querySelector('.task-title').innerText;
+    // Removing the emojis and extra text to get raw values for the inputs
+    const date = currentEditingCard.querySelector('.date-val').innerText.replace('📅 ', '');
+    const time = currentEditingCard.querySelector('.time-val').innerText.replace('⏰ ', '');
 
-        if(task.status==='doing') doingList.appendChild(li);
-        else if(task.status==='done') doneList.appendChild(li);
-        else if(task.status==='cancel'){} // optional hide canceled tasks
-        else todoList.appendChild(li);
+    // Fill inputs in the modal
+    document.getElementById('editNameInput').value = title;
+    document.getElementById('editDateInput').value = (date === 'No Date') ? '' : date;
+    document.getElementById('editTimeInput').value = (time === '--:--') ? '' : time;
+
+    document.getElementById('editModal').style.display = 'block';
+}
+
+function saveEdit() {
+    const newName = document.getElementById('editNameInput').value;
+    const newDate = document.getElementById('editDateInput').value;
+    const newTime = document.getElementById('editTimeInput').value;
+
+    if (newName && currentEditingCard) {
+        currentEditingCard.querySelector('.task-title').innerText = newName;
+        currentEditingCard.querySelector('.date-val').innerText = `📅 ${newDate || 'No Date'}`;
+        currentEditingCard.querySelector('.time-val').innerText = `⏰ ${newTime || '--:--'}`;
+        closeModal();
+    }
+}
+
+function closeModal() {
+    document.getElementById('editModal').style.display = 'none';
+    currentEditingCard = null;
+}
+
+function moveNext(btn) {
+    const card = btn.closest('.task-card');
+    const parentId = card.parentElement.parentElement.id;
+
+    if (parentId === 'todo') {
+        document.querySelector('#doing .task-area').appendChild(card);
+    } else if (parentId === 'doing') {
+        card.classList.add('completed');
+        btn.innerHTML = "✔️ Done";
+        btn.disabled = true;
+        document.querySelector('#done .task-area').appendChild(card);
+    }
+    updateCounts();
+}
+
+function deleteTask(btn) {
+    const card = btn.closest('.task-card');
+    card.style.opacity = "0";
+    card.style.transform = "scale(0.9)";
+    setTimeout(() => {
+        card.remove();
+        updateCounts();
+    }, 200);
+}
+
+function updateCounts() {
+    document.querySelectorAll('.column').forEach(col => {
+        const count = col.querySelectorAll('.task-card').length;
+        col.querySelector('.badge').innerText = count;
     });
 }
-
-// CRUD
-function addTask(){
-    const text=taskInput.value.trim(); if(!text) return;
-    tasks.push({text, deadline:deadlineInput.value, time:timeInput.value, category:categoryInput.value, status:'todo', completed:false, subtasks:[], notified:false});
-    taskInput.value=''; deadlineInput.value=''; timeInput.value=''; categoryInput.value='';
-    saveTasks(); renderTasks();
-}
-function deleteTask(index){ tasks.splice(index,1); saveTasks(); renderTasks(); }
-function toggleComplete(index){ tasks[index].completed=!tasks[index].completed; saveTasks(); renderTasks(); }
-function editTask(index){ const task=tasks[index]; const newText=prompt("Edit task",task.text); if(newText){task.text=newText; task.notified=false; saveTasks(); renderTasks(); } }
-function addSubtask(index){ const sub=prompt("Enter subtask"); if(sub){ tasks[index].subtasks.push(sub); saveTasks(); renderTasks(); } }
-function deleteSubtask(tIndex,sIndex){ tasks[tIndex].subtasks.splice(sIndex,1); saveTasks(); renderTasks(); }
-
-// Change time/date
-function changeTime(index){
-    const newDate=prompt("Enter new date (YYYY-MM-DD)", tasks[index].deadline);
-    const newTime=prompt("Enter new time (HH:MM)", tasks[index].time);
-    if(newDate) tasks[index].deadline=newDate;
-    if(newTime) tasks[index].time=newTime;
-    tasks[index].notified=false;
-    saveTasks(); renderTasks();
-}
-
-// Status buttons
-function changeStatus(index,status){
-    if(status==='cancel'){ tasks[index].status='todo'; tasks[index].completed=false; } 
-    else { tasks[index].status=status; if(status==='done') tasks[index].completed=true; else tasks[index].completed=false; }
-    saveTasks(); renderTasks();
-}
-
-// Drag & Drop
-let draggedIndex=null;
-function dragStart(e){ draggedIndex=e.currentTarget.dataset.index; }
-function dragOver(e){ e.preventDefault(); }
-function drop(e){
-    const targetList=e.currentTarget.parentElement.id;
-    const targetStatus=targetList==='todoList'?'todo':targetList==='doingList'?'doing':'done';
-    tasks[draggedIndex].status=targetStatus;
-    saveTasks(); renderTasks();
-}
-
-// Dark mode
-let darkMode=localStorage.getItem('darkMode')==='true';
-function toggleMode(){ darkMode=!darkMode; document.body.classList.toggle('dark',darkMode); localStorage.setItem('darkMode',darkMode); }
-modeToggle.addEventListener('click',toggleMode);
-document.body.classList.toggle('dark',darkMode);
-
-// Notifications + Voice + Popup
-function checkReminders(){
-    const now=new Date();
-    tasks.forEach(task=>{
-        if(task.time && task.deadline && !task.notified && task.status!=='done'){
-            const [h,m]=task.time.split(':'); const [y,mon,d]=task.deadline.split('-');
-            const tDate=new Date(y,mon-1,d,h,m);
-            if(now>=tDate && now-tDate<60000){
-                // Notification
-                if(Notification.permission==="granted") new Notification("Task Reminder ⏰",{body:task.text});
-                // Popup
-                alert(`Reminder: ${task.text}`);
-                // Voice
-                if('speechSynthesis' in window){
-                    const msg=new SpeechSynthesisUtterance(`Reminder: ${task.text}`);
-                    window.speechSynthesis.speak(msg);
-                }
-                task.notified=true; saveTasks();
-            }
-        }
-    });
-}
-setInterval(checkReminders,10000);
-if("Notification" in window && Notification.permission!=="granted"){ Notification.requestPermission(); }
-
-// Add task
-addBtn.addEventListener('click',addTask);
-taskInput.addEventListener('keypress',e=>{ if(e.key==='Enter') addTask(); });
-renderTasks();
